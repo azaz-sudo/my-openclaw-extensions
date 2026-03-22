@@ -1,0 +1,23 @@
+{
+  "name": "@openclaw/mcp-client",
+  "version": "1.0.0",
+  "description": "MCP Client plugin for OpenClaw",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "keywords": [
+    "openclaw",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "eventsource": "^2.0.2"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2025.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

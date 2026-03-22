@@ -1,0 +1,95 @@
+{
+  "id": "mcp-client",
+  "name": "MCP Client",
+  "description": "Model Context Protocol client for connecting to MCP servers like Tencent Map",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "servers": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "MCP server URL (HTTP/SSE)"
+            },
+            "command": {
+              "type": "string",
+              "description": "Command to run for stdio MCP server"
+            },
+            "args": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Arguments for stdio MCP server"
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "Environment variables for stdio MCP server"
+            },
+            "apiKey": {
+              "type": "string",
+              "description": "API key for authentication"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "Additional HTTP headers"
+            },
+            "disabled": {
+              "type": "boolean",
+              "description": "Disable this server"
+            }
+          }
+        }
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "description": "Default timeout for MCP operations"
+      }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable MCP Client"
+    },
+    "servers": {
+      "label": "MCP Servers"
+    },
+    "servers.*.url": {
+      "label": "Server URL",
+      "placeholder": "https://mcp.example.com/sse"
+    },
+    "servers.*.command": {
+      "label": "Command",
+      "placeholder": "npx -y @modelcontextprotocol/server-filesystem"
+    },
+    "servers.*.args": {
+      "label": "Arguments"
+    },
+    "servers.*.env": {
+      "label": "Environment Variables"
+    },
+    "servers.*.apiKey": {
+      "label": "API Key",
+      "sensitive": true
+    },
+    "servers.*.headers": {
+      "label": "HTTP Headers"
+    },
+    "servers.*.disabled": {
+      "label": "Disabled"
+    },
+    "timeoutMs": {
+      "label": "Timeout (ms)",
+      "advanced": true
+    }
+  }
+}
