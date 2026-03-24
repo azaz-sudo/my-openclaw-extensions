@@ -1,10 +1,27 @@
 # MCP Client Plugin for OpenClaw
 
-This plugin provides MCP (Model Context Protocol) client support for OpenClaw, allowing you to connect to MCP servers and use their tools.
+A fully functional MCP (Model Context Protocol) client plugin for OpenClaw that connects to MCP servers and exposes their tools to your AI assistant.
+
+## Features
+
+- ✅ **Multiple Transport Support**: HTTP/SSE, Streamable HTTP, and Stdio transports
+- ✅ **Auto-discovery**: Automatically discovers and registers tools from MCP servers
+- ✅ **Dynamic Tool Registration**: Each MCP tool becomes a native OpenClaw tool
+- ✅ **Management Tools**: `mcp_list` and `mcp_call` for server management
+- ✅ **Multiple Servers**: Connect to multiple MCP servers simultaneously
 
 ## Installation
 
-The plugin is installed in `~/.openclaw/extensions/mcp-client/`.
+### Option 1: Clone to extensions directory
+
+```bash
+git clone https://github.com/azaz-sudo/my-openclaw-extensions
+cp -r my-openclaw-extensions/mcp-client ~/.openclaw/extensions/
+```
+
+### Option 2: Manual installation
+
+Copy the `mcp-client` directory to `~/.openclaw/extensions/mcp-client/`.
 
 ## Configuration
 
@@ -13,109 +30,138 @@ Add the following to your `~/.openclaw/openclaw.json`:
 ```json5
 {
   plugins: {
+    allow: ["mcp-client"],
+    load: {
+      paths: ["~/.openclaw/extensions/mcp-client"],
+    },
     entries: {
       "mcp-client": {
         enabled: true,
-        servers: {
-          // HTTP/SSE MCP server example
-          "tencent-map": {
-            url: "https://mcp.map.qq.com/mcp",
-            apiKey: "YOUR_TENCENT_MAP_KEY",
-          },
-          // Stdio MCP server example
-          "filesystem": {
-            command: "npx",
-            args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
-          },
-          // Another HTTP example
-          "custom-server": {
-            url: "https://mcp.example.com/sse",
-            headers: {
-              "X-Custom-Header": "value",
+        config: {
+          servers: {
+            // HTTP MCP server example (McDonald's)
+            "mcd-mcp": {
+              url: "https://mcp.mcd.cn",
+              headers: {
+                "Authorization": "Bearer YOUR_TOKEN",
+              },
+            },
+            // Stdio MCP server example (Filesystem)
+            "filesystem": {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
             },
           },
+          timeoutMs: 30000, // Optional: default 30000
         },
       },
     },
   },
+  // Optional: Allow MCP tools in tool policy
+  tools: {
+    alsoAllow: ["mcp_list", "mcp_call", "mcp_*"],
+  },
 }
+```
+
+After configuration, restart the gateway:
+
+```bash
+openclaw gateway restart
 ```
 
 ## Server Configuration Options
 
-Each server can have the following options:
-
 | Option | Type | Description |
 |--------|------|-------------|
-| `url` | string | MCP server URL (for HTTP/SSE transport) |
+| `url` | string | MCP server URL (for HTTP transport) |
 | `command` | string | Command to run (for stdio transport) |
 | `args` | string[] | Arguments for stdio transport |
 | `env` | object | Environment variables for stdio transport |
-| `apiKey` | string | API key for authentication |
+| `apiKey` | string | API key for authentication (sets `Authorization: Bearer`) |
 | `headers` | object | Additional HTTP headers |
 | `disabled` | boolean | Disable this server |
 
 ## Usage
 
-Once configured and the gateway is restarted, the plugin will:
+### List Connected Servers
 
-1. Connect to all configured MCP servers
-2. Discover available tools from each server
-3. Register each MCP tool as an OpenClaw agent tool
-
-### Available Tools
-
-The plugin registers the following management tools:
-
-- `mcp_list` - List all connected MCP servers and their tools
-- `mcp_call` - Call a tool on a specific MCP server
-
-Each MCP server's tools are also registered with the naming convention:
-`mcp_{server_name}_{tool_name}`
-
-### Example: Using Tencent Map MCP
-
-After configuring the Tencent Map MCP server:
-
+```javascript
+mcp_list()
 ```
-# List available MCP servers
-mcp_list
 
-# Call a Tencent Map tool directly
-mcp_tencent-map_geocode address="北京市海淀区"
+Returns:
+```json
+[
+  {
+    "name": "mcd-mcp",
+    "serverInfo": { "name": "mcd-mcp", "version": "1.0.0" },
+    "tools": ["available-coupons", "query-meals", "create-order", ...],
+    "resources": 0,
+    "prompts": 0
+  }
+]
+```
 
-# Or use mcp_call
-mcp_call server="tencent-map" tool="geocode" arguments={"address": "北京市海淀区"}
+### Call a Tool Dynamically
+
+```javascript
+mcp_call({
+  server: "mcd-mcp",
+  tool: "available-coupons",
+  arguments: {}
+})
+```
+
+### Use MCP Tools Directly
+
+Each MCP tool is registered with the naming convention `mcp_{server_name}_{tool_name}`:
+
+```javascript
+// McDonald's coupon query
+mcp_mcd_mcp_available_coupons()
+
+// Query meals
+mcp_mcd_mcp_query_meals({ category: "breakfast" })
 ```
 
 ## Supported Transports
 
 ### HTTP/SSE Transport
 
-For MCP servers that expose an HTTP endpoint with Server-Sent Events:
+For MCP servers with Server-Sent Events:
 
 ```json5
 {
-  servers: {
-    "my-server": {
-      url: "https://mcp.example.com/sse",
-      apiKey: "your-api-key",
-    },
+  "my-server": {
+    url: "https://mcp.example.com/sse",
+    apiKey: "your-api-key",
+  },
+}
+```
+
+### Streamable HTTP Transport
+
+For modern MCP servers using stateless HTTP:
+
+```json5
+{
+  "my-server": {
+    url: "https://mcp.example.com",
+    headers: { "X-API-Key": "your-key" },
   },
 }
 ```
 
 ### Stdio Transport
 
-For MCP servers that run as local processes:
+For local MCP server processes:
 
 ```json5
 {
-  servers: {
-    "filesystem": {
-      command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
-    },
+  "filesystem": {
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
   },
 }
 ```
@@ -125,23 +171,23 @@ For MCP servers that run as local processes:
 ### Check plugin status
 
 ```bash
-openclaw doctor
+openclaw status --deep
 ```
 
 ### View logs
 
-Check the gateway logs for `[mcp-client]` entries:
-
 ```bash
-# View recent logs
-tail -f /tmp/openclaw/openclaw-*.log | grep mcp-client
+openclaw logs --follow | grep mcp
 ```
 
 ### Common Issues
 
-1. **Connection timeout**: Increase `timeoutMs` in the plugin config
-2. **Authentication failed**: Check your API key
-3. **Server not found**: Verify the URL or command path
+| Issue | Solution |
+|-------|----------|
+| Plugin not loading | Check `plugins.allow` includes `"mcp-client"` |
+| Connection timeout | Increase `timeoutMs` in config |
+| Tools not available | Add `"mcp_*"` to `tools.alsoAllow` |
+| Authentication failed | Verify API key or headers |
 
 ## Development
 
@@ -151,16 +197,34 @@ tail -f /tmp/openclaw/openclaw-*.log | grep mcp-client
 mcp-client/
 ├── openclaw.plugin.json  # Plugin manifest
 ├── package.json          # NPM package config
-├── index.js              # Main plugin entry
+├── index.js              # Main plugin entry (function export)
 └── src/
     ├── mcp-protocol.js   # MCP protocol types
     ├── mcp-transport.js  # Transport implementations
     └── mcp-client.js     # MCP client class
 ```
 
-### Building
+### Key Implementation Notes
 
-No build step required - the plugin uses ES modules directly.
+1. **Entry Point**: Uses function export instead of `definePluginEntry` for better compatibility
+2. **Tool Registration**: Tools are registered with `{ optional: true }` flag
+3. **Service Lifecycle**: MCP connections are managed via `registerService`
+
+## Changelog
+
+### v1.1.0 (2026-03-24)
+
+- Fixed: Plugin entry point compatibility issue
+- Changed: Use function export instead of `definePluginEntry`
+- Improved: Better error handling and logging
+- Added: Support for `tools.alsoAllow` with `mcp_*` pattern
+
+### v1.0.0
+
+- Initial release
+- Support for HTTP/SSE, Streamable HTTP, and Stdio transports
+- Auto-discovery of MCP tools
+- Dynamic tool registration
 
 ## License
 
