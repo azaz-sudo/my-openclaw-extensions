@@ -82,6 +82,65 @@ openclaw gateway restart
 | `headers` | object | Additional HTTP headers |
 | `disabled` | boolean | Disable this server |
 
+## CLI Commands
+
+The plugin registers the following CLI commands under `openclaw mcp`:
+
+### List connected servers
+
+```bash
+openclaw mcp list
+```
+
+Shows all connected MCP servers, their server info, and available tools.
+
+### List configured servers
+
+```bash
+openclaw mcp servers
+```
+
+Shows all configured MCP servers and their connection status.
+
+### List tools on a server
+
+```bash
+openclaw mcp tools <server>
+```
+
+Lists all tools available on the specified MCP server with their descriptions.
+
+### Call a tool
+
+```bash
+# Basic call with no arguments
+openclaw mcp call <server> <tool>
+
+# Pass arguments as JSON string
+openclaw mcp call <server> <tool> --args '{"key": "value"}'
+
+# Read arguments from a JSON file
+openclaw mcp call <server> <tool> --file ./args.json
+```
+
+Calls a tool on the specified MCP server and prints the result.
+
+### Example
+
+```bash
+# List all connected servers
+openclaw mcp list
+
+# List tools on mcd-mcp server
+openclaw mcp tools mcd-mcp
+
+# Query coupons
+openclaw mcp call mcd-mcp query-my-coupons
+
+# Search for restaurants with arguments
+openclaw mcp call mcd-mcp search-restaurant --args '{"keyword": "北京"}'
+```
+
 ## Usage
 
 ### List Connected Servers
