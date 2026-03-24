@@ -2,6 +2,15 @@
 
 A fully functional MCP (Model Context Protocol) client plugin for OpenClaw that connects to MCP servers and exposes their tools to your AI assistant.
 
+## Version Compatibility
+
+| Plugin Version | OpenClaw Version | Notes |
+|----------------|------------------|-------|
+| v1.1.1 | 2026.3.23+ | ✅ **Recommended** - Fixed plugin entry point compatibility |
+| v1.0.0 | 2026.3.13 | Uses `definePluginEntry` (not compatible with 2026.3.23+) |
+
+> **Note:** If you're using OpenClaw 2026.3.13, checkout commit `6972815` instead of the latest version.
+
 ## Features
 
 - ✅ **Multiple Transport Support**: HTTP/SSE, Streamable HTTP, and Stdio transports
