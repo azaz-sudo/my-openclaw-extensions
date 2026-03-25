@@ -148,10 +148,10 @@ export default function mcpClientPlugin(api) {
     { optional: true }
   );
 
-  // Register CLI commands
+  // Register CLI commands (use 'mcp-client' to avoid conflict with built-in 'mcp' command)
   api.registerCli(
     ({ program }) => {
-      const mcpCmd = program.command("mcp").description("MCP client commands");
+      const mcpCmd = program.command("mcp-client").description("MCP client commands - connect and call MCP tools");
 
       // openclaw mcp list
       mcpCmd
@@ -318,7 +318,7 @@ export default function mcpClientPlugin(api) {
           }
         });
 
-      // openclaw mcp servers
+      // openclaw mcp-client servers
       mcpCmd
         .command("servers")
         .description("List configured MCP servers")
@@ -340,7 +340,7 @@ export default function mcpClientPlugin(api) {
           console.log("");
         });
     },
-    { commands: ["mcp"] },
+    { commands: ["mcp-client"] },
   );
 
   // Register service for lifecycle management and tool discovery
