@@ -39,6 +39,43 @@ export default function mcpClientPlugin(api) {
   // Store connected clients (for Gateway runtime)
   const clients = new Map();
 
+  // Connect to all configured MCP servers immediately on plugin load
+  // This ensures tools are available before the service lifecycle starts
+  const connectServers = async () => {
+    for (const name of serverNames) {
+      const serverConfig = servers[name];
+
+      try {
+        const client = new McpClient({
+          name,
+          config: {
+            ...serverConfig,
+            timeout: config.timeoutMs,
+          },
+          logger: api.logger,
+        });
+
+        await client.connect();
+        clients.set(name, client);
+
+        // Register tools from this MCP server as individual tools
+        const tools = client.getTools();
+        for (const tool of tools) {
+          registerMcpTool(api, name, client, tool);
+        }
+
+        api.logger.info(`[mcp-client] Connected to ${name} with ${tools.length} tools`);
+      } catch (err) {
+        api.logger.error(`[mcp-client] Failed to connect to ${name}:`, err.message);
+      }
+    }
+  };
+
+  // Start connection immediately (don't wait for service start)
+  connectServers().catch((err) => {
+    api.logger.error("[mcp-client] Error during initial connection:", err.message);
+  });
+
   // Helper function to create a client and connect (for CLI use)
   const createAndConnect = async (serverName) => {
     const serverConfig = servers[serverName];
@@ -347,34 +384,9 @@ export default function mcpClientPlugin(api) {
   api.registerService({
     id: "mcp-client",
     start: async () => {
-      // Connect to all configured MCP servers
-      for (const name of serverNames) {
-        const serverConfig = servers[name];
-
-        try {
-          const client = new McpClient({
-            name,
-            config: {
-              ...serverConfig,
-              timeout: config.timeoutMs,
-            },
-            logger: api.logger,
-          });
-
-          await client.connect();
-          clients.set(name, client);
-
-          // Register tools from this MCP server as individual tools
-          const tools = client.getTools();
-          for (const tool of tools) {
-            registerMcpTool(api, name, client, tool);
-          }
-
-          api.logger.info(`[mcp-client] Connected to ${name} with ${tools.length} tools`);
-        } catch (err) {
-          api.logger.error(`[mcp-client] Failed to connect to ${name}:`, err.message);
-        }
-      }
+      // Servers are already connected during plugin load
+      // This is now just a placeholder for future lifecycle hooks
+      api.logger.info(`[mcp-client] Service started, ${clients.size} server(s) connected`);
     },
     stop: async () => {
       for (const [name, client] of clients) {
