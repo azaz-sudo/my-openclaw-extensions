@@ -3,6 +3,8 @@
  * 
  * This plugin provides MCP (Model Context Protocol) client support,
  * allowing OpenClaw to connect to MCP servers and use their tools.
+ * 
+ * Configuration: Uses plugins.entries.mcp-client.config.servers from openclaw.json
  */
 
 import { McpClient } from "./src/mcp-client.js";
@@ -14,10 +16,18 @@ export const description = "Model Context Protocol client for connecting to MCP 
 
 // Default export - plugin entry
 export default function mcpClientPlugin(api) {
+  // api.pluginConfig is the content of plugins.entries.mcp-client.config
+  // So if config is { servers: { ... } }, pluginConfig IS { servers: { ... } }
   const pluginConfig = api.pluginConfig || {};
+  
+  // Read servers directly from pluginConfig
+  const servers = pluginConfig.servers || {};
+  const serverNames = Object.keys(servers).filter(
+    (name) => !servers[name].disabled
+  );
+
   const config = {
-    enabled: typeof pluginConfig.enabled === "boolean" ? pluginConfig.enabled : true,
-    servers: pluginConfig.servers || {},
+    enabled: true, // enabled is controlled by plugins.entries.mcp-client.enabled, not passed here
     timeoutMs: typeof pluginConfig.timeoutMs === "number" ? pluginConfig.timeoutMs : 30000,
   };
 
@@ -26,55 +36,13 @@ export default function mcpClientPlugin(api) {
     return;
   }
 
-  const servers = config.servers || {};
-  const serverNames = Object.keys(servers).filter(
-    (name) => !servers[name].disabled
-  );
-
   if (serverNames.length === 0) {
-    api.logger.info("[mcp-client] No MCP servers configured");
+    api.logger.info("[mcp-client] No MCP servers configured in plugins.entries.mcp-client.config.servers");
     return;
   }
 
   // Store connected clients (for Gateway runtime)
   const clients = new Map();
-
-  // Connect to all configured MCP servers immediately on plugin load
-  // This ensures tools are available before the service lifecycle starts
-  const connectServers = async () => {
-    for (const name of serverNames) {
-      const serverConfig = servers[name];
-
-      try {
-        const client = new McpClient({
-          name,
-          config: {
-            ...serverConfig,
-            timeout: config.timeoutMs,
-          },
-          logger: api.logger,
-        });
-
-        await client.connect();
-        clients.set(name, client);
-
-        // Register tools from this MCP server as individual tools
-        const tools = client.getTools();
-        for (const tool of tools) {
-          registerMcpTool(api, name, client, tool);
-        }
-
-        api.logger.info(`[mcp-client] Connected to ${name} with ${tools.length} tools`);
-      } catch (err) {
-        api.logger.error(`[mcp-client] Failed to connect to ${name}:`, err.message);
-      }
-    }
-  };
-
-  // Start connection immediately (don't wait for service start)
-  connectServers().catch((err) => {
-    api.logger.error("[mcp-client] Error during initial connection:", err.message);
-  });
 
   // Helper function to create a client and connect (for CLI use)
   const createAndConnect = async (serverName) => {
@@ -190,7 +158,7 @@ export default function mcpClientPlugin(api) {
     ({ program }) => {
       const mcpCmd = program.command("mcp-client").description("MCP client commands - connect and call MCP tools");
 
-      // openclaw mcp list
+      // openclaw mcp-client list
       mcpCmd
         .command("list")
         .description("List all connected MCP servers and their tools")
@@ -232,7 +200,7 @@ export default function mcpClientPlugin(api) {
           }
         });
 
-      // openclaw mcp call <server> <tool> [args]
+      // openclaw mcp-client call <server> <tool> [args]
       mcpCmd
         .command("call <server> <tool>")
         .description("Call a tool on an MCP server")
@@ -307,7 +275,7 @@ export default function mcpClientPlugin(api) {
           }
         });
 
-      // openclaw mcp tools <server>
+      // openclaw mcp-client tools <server>
       mcpCmd
         .command("tools <server>")
         .description("List tools available on an MCP server")
@@ -380,12 +348,47 @@ export default function mcpClientPlugin(api) {
     { commands: ["mcp-client"] },
   );
 
-  // Register service for lifecycle management and tool discovery
+  // Connect to MCP servers immediately (don't rely on registerService lifecycle)
+  const connectToServers = async () => {
+    for (const name of serverNames) {
+      const serverConfig = servers[name];
+
+      try {
+        const client = new McpClient({
+          name,
+          config: {
+            ...serverConfig,
+            timeout: config.timeoutMs,
+          },
+          logger: api.logger,
+        });
+
+        await client.connect();
+        clients.set(name, client);
+
+        // Register tools from this MCP server as individual tools
+        const tools = client.getTools();
+        for (const tool of tools) {
+          registerMcpTool(api, name, client, tool);
+        }
+
+        api.logger.info(`[mcp-client] Connected to ${name} with ${tools.length} tools`);
+      } catch (err) {
+        api.logger.error(`[mcp-client] Failed to connect to ${name}:`, err.message);
+      }
+    }
+  };
+
+  // Start connection immediately
+  connectToServers().catch((err) => {
+    api.logger.error("[mcp-client] Connection error:", err.message);
+  });
+
+  // Also register service for lifecycle management (stop handler)
   api.registerService({
     id: "mcp-client",
     start: async () => {
-      // Servers are already connected during plugin load
-      // This is now just a placeholder for future lifecycle hooks
+      // Already connected above, just log
       api.logger.info(`[mcp-client] Service started, ${clients.size} server(s) connected`);
     },
     stop: async () => {
