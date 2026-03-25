@@ -52,7 +52,37 @@ cp -r my-openclaw-extensions/mcp-client ~/.openclaw/extensions/
 
 ## Configuration
 
-Add the following to your `~/.openclaw/openclaw.json`:
+OpenClaw supports two ways to configure MCP servers. **Do not configure the same server in both places** — this will cause the plugin to initialize multiple times and produce duplicate connection logs.
+
+### Recommended: Top-level `mcp.servers` (Preferred)
+
+Configure MCP servers at the top level of your `~/.openclaw/openclaw.json`:
+
+```json5
+{
+  mcp: {
+    servers: {
+      "my-mcp-server": {
+        url: "https://mcp.example.com",
+        apiKey: "YOUR_API_KEY", // or use headers for custom auth
+      },
+    },
+  },
+  plugins: {
+    allow: ["mcp-client"],
+    entries: {
+      "mcp-client": {
+        enabled: true,
+        // No config.servers here — use top-level mcp.servers instead
+      },
+    },
+  },
+}
+```
+
+### Alternative: Plugin-level `config.servers` (Legacy)
+
+You can also configure servers directly in the plugin config, but this is not recommended for new setups:
 
 ```json5
 {
@@ -72,12 +102,21 @@ Add the following to your `~/.openclaw/openclaw.json`:
       },
     },
   },
-  // Optional: Allow MCP tools in tool policy
-  tools: {
-    alsoAllow: ["mcp_list", "mcp_call", "mcp_*"],
-  },
 }
 ```
+
+### ⚠️ Avoid Duplicate Configuration
+
+If the same server appears in both `mcp.servers` and `plugins.entries.mcp-client.config.servers`, OpenClaw will initialize it twice, resulting in duplicate connection logs like:
+
+```
+[plugins] [mcp:mcd-mcp] Connected to mcd-mcp v1.0.0
+[plugins] [mcp:mcd-mcp] Connected to mcd-mcp v1.0.0
+[gateway] [mcp:mcd-mcp] Initialized with 18 tools
+...
+```
+
+**Solution:** Keep your MCP server config in one place only — prefer `mcp.servers` at the top level.
 
 After configuration, restart the gateway:
 ```bash
